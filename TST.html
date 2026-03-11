@@ -802,20 +802,22 @@ function buildExportHtml(src) {
   const stateJson = JSON.stringify(state.sections);
   const publishedAt = Date.now();
 
-  // Verify marker is present in source
-  if (!src.includes('@@BAKED_STATE_START@@')) {
-    throw new Error('@@BAKED_STATE_START@@ marker not found in GitHub source. Re-upload the base file.');
+  const MARKER_START = '// @@BAKED_STATE_START@@';
+  const MARKER_END   = '// @@BAKED_STATE_END@@';
+
+  // Verify markers are present
+  if (!src.includes(MARKER_START) || !src.includes(MARKER_END)) {
+    throw new Error('Markers not found in GitHub source. Re-upload the base file.');
   }
 
-  // Replace BAKED_STATE block
-  const markerRegex = /\/\/ @@BAKED_STATE_START@@[\s\S]*?\/\/ @@BAKED_STATE_END@@/;
-  const replacement = '// @@BAKED_STATE_START@@\nconst BAKED_STATE = ' + stateJson + ';\n// @@BAKED_STATE_END@@';
-  let out = src.replace(markerRegex, replacement);
-
-  // Verify replacement worked
-  if (out.includes('BAKED_STATE = null')) {
-    throw new Error('State replacement failed — marker found but replace did not apply.');
-  }
+  // Replace using string split — no regex, no escaping issues
+  const before = src.slice(0, src.indexOf(MARKER_START));
+  const after  = src.slice(src.indexOf(MARKER_END) + MARKER_END.length);
+  let out = before
+    + MARKER_START + '\n'
+    + 'const BAKED_STATE = ' + stateJson + ';\n'
+    + MARKER_END
+    + after;
 
   // Update PUBLISHED_AT
   if (!out.includes('const PUBLISHED_AT =')) {
