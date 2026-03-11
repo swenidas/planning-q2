@@ -797,10 +797,8 @@ function buildExportHtml() {
 
   // 2. Inject PUBLISHED_AT constant right after STORAGE_KEY declaration
   out = out.replace(
-    "const STORAGE_KEY = 'q2-planning-v4';
-const READ_ONLY = new URLSearchParams(location.search).get('view') === '1';",
-    "const STORAGE_KEY = 'q2-planning-v4';
-const READ_ONLY = new URLSearchParams(location.search).get('view') === '1';\nconst PUBLISHED_AT = " + publishedAt + ";"
+    "const STORAGE_KEY = 'q2-planning-v4';",
+    "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
   );
 
   // 3. Patch saveLocal to stamp _savedAt on every write
