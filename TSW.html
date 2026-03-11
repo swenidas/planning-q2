@@ -761,7 +761,12 @@ async function pushToGithub(cfg) {
     if (!rawSource) throw new Error('Could not fetch current file from GitHub.');
 
     // 2. Patch the raw source from GitHub (not outerHTML) with current state
+    console.log('[Push] Raw source length:', rawSource.length);
+    console.log('[Push] Marker present:', rawSource.includes('@@BAKED_STATE_START@@'));
+    console.log('[Push] Current state sections:', state.sections.length);
     const updatedHtml = buildExportHtml(rawSource);
+    console.log('[Push] Output length:', updatedHtml.length);
+    console.log('[Push] State baked in:', updatedHtml.includes(state.sections[0]?.id || 'n/a'));
     const encoded = btoa(unescape(encodeURIComponent(updatedHtml)));
 
     // 3. Commit
@@ -794,21 +799,34 @@ async function pushToGithub(cfg) {
 // Build export HTML with current state baked in via stable marker.
 // Works on every subsequent push because it targets the marker, not DEFAULTS.
 function buildExportHtml(src) {
-  // src is the raw file fetched from GitHub — reliable, unmodified
   const stateJson = JSON.stringify(state.sections);
   const publishedAt = Date.now();
 
-  // Replace the BAKED_STATE block using the stable markers
+  // Verify marker is present in source
+  if (!src.includes('@@BAKED_STATE_START@@')) {
+    throw new Error('@@BAKED_STATE_START@@ marker not found in GitHub source. Re-upload the base file.');
+  }
+
+  // Replace BAKED_STATE block
+  const markerRegex = /\/\/ @@BAKED_STATE_START@@[\s\S]*?\/\/ @@BAKED_STATE_END@@/;
   let out = src.replace(
-    /\/\/ @@BAKED_STATE_START@@[\s\S]*?\/\/ @@BAKED_STATE_END@@/,
-    '// @@BAKED_STATE_START@@\nconst BAKED_STATE = ' + stateJson + ';\n// @@BAKED_STATE_END@@'
+    markerRegex,
+    '// @@BAKED_STATE_START@@
+const BAKED_STATE = ' + stateJson + ';
+// @@BAKED_STATE_END@@'
   );
 
-  // Inject or update PUBLISHED_AT (only once — guard against double-inject)
+  // Verify replacement worked
+  if (out.includes('BAKED_STATE = null')) {
+    throw new Error('State replacement failed — marker found but replace did not apply.');
+  }
+
+  // Update PUBLISHED_AT
   if (!out.includes('const PUBLISHED_AT =')) {
     out = out.replace(
       "const STORAGE_KEY = 'q2-planning-v4';",
-      "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
+      "const STORAGE_KEY = 'q2-planning-v4';
+const PUBLISHED_AT = " + publishedAt + ";"
     );
   } else {
     out = out.replace(/const PUBLISHED_AT = \d+;/, 'const PUBLISHED_AT = ' + publishedAt + ';');
