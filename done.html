@@ -168,6 +168,16 @@
   .gh-status.ok  { color:#16a34a; }
   .gh-status.err { color:#b91c1c; }
 
+  /* ── Read-only mode ── */
+  body.readonly .editable, body.readonly .kpi-input,
+  body.readonly .section-outcome-val, body.readonly .section-title-inp { pointer-events:none; }
+  body.readonly .del-btn, body.readonly .del-section-btn,
+  body.readonly .add-row-wrap, body.readonly .add-section-wrap { display:none !important; }
+  body.readonly .status-pill, body.readonly .pri,
+  body.readonly .effort, body.readonly .badge-platform { cursor:default; pointer-events:none; }
+  body.readonly #toolbar-actions { display:none !important; }
+  body.readonly .edit-hint { display:none; }
+
   /* ── Save bar ── */
   .save-bar { position:fixed; bottom:24px; right:32px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:9px 16px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:8px; opacity:0; transform:translateY(8px); transition:all .2s; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,.08); }
   .save-bar.show { opacity:1; transform:translateY(0); }
@@ -214,7 +224,7 @@
       priority / effort / status / platform cycle on click ·
       <span>+ add section</span> at the bottom
     </div>
-    <div class="toolbar-right">
+    <div class="toolbar-right" id="toolbar-actions">
       <button class="btn" onclick="exportLink()">📋 Copy share link</button>
       <span class="copy-confirm" id="copy-confirm">✓ Copied!</span>
       <button class="btn btn-github" id="gh-btn" onclick="handleGithubClick()">
@@ -294,6 +304,7 @@
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'q2-planning-v4';
+const READ_ONLY = new URLSearchParams(location.search).get('view') === '1';
 const STATUSES  = ['Not Started','In Progress','Done','Blocked'];
 const PRIORITIES = ['High','Med','Low'];
 const EFFORTS   = ['XS','S','M','L','XL'];
@@ -786,8 +797,10 @@ function buildExportHtml() {
 
   // 2. Inject PUBLISHED_AT constant right after STORAGE_KEY declaration
   out = out.replace(
-    "const STORAGE_KEY = 'q2-planning-v4';",
-    "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
+    "const STORAGE_KEY = 'q2-planning-v4';
+const READ_ONLY = new URLSearchParams(location.search).get('view') === '1';",
+    "const STORAGE_KEY = 'q2-planning-v4';
+const READ_ONLY = new URLSearchParams(location.search).get('view') === '1';\nconst PUBLISHED_AT = " + publishedAt + ";"
   );
 
   // 3. Patch saveLocal to stamp _savedAt on every write
@@ -808,6 +821,7 @@ function buildExportHtml() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────────────────────────────────────
+if (READ_ONLY) document.body.classList.add('readonly');
 loadState();
 renderAll();
 // Expand all item-name and item-note textareas to fit their content on load
