@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Q2 Planning ML4.2</title>
+<title>Q2 Planning — Error Prevention & Remediation</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -192,7 +192,7 @@
   <div class="header">
     <div class="header-left">
       <div class="eyebrow">adidas.com · Lower Funnel · Q2 2025</div>
-      <h1>Reduce Friction <span>&</span> Improve Site Speed</h1>
+      <h1>Error Prevention <span>&</span> Remediation</h1>
       <div class="sub">April – June 2025</div>
       <div class="stats">
         <div class="stat"><div class="stat-dot" style="background:var(--pri-high)"></div><div><div class="stat-num" id="stat-high">—</div><div class="stat-label">High priority</div></div></div>
@@ -366,6 +366,9 @@ const DEFAULTS = [
     ]
   },
 ];
+// @@BAKED_STATE_START@@
+const BAKED_STATE = null; // replaced on push
+// @@BAKED_STATE_END@@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
@@ -385,7 +388,7 @@ function loadState() {
     const ls = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (ls && ls.sections && (!ls._savedAt || !window.PUBLISHED_AT || ls._savedAt > window.PUBLISHED_AT)) { state = ls; return; }
   } catch(e) {}
-  state.sections = JSON.parse(JSON.stringify(DEFAULTS));
+  state.sections = JSON.parse(JSON.stringify(BAKED_STATE !== null ? BAKED_STATE : DEFAULTS));
 }
 
 function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -782,36 +785,28 @@ async function pushToGithub(cfg) {
 }
 
 // Build a self-contained HTML export with current state baked in.
-// Embeds a publish timestamp — other browsers compare it against when
-// their local copy was last saved and discard theirs if it's older.
+// Build export HTML with current state baked in via stable marker.
+// Works on every subsequent push because it targets the marker, not DEFAULTS.
 function buildExportHtml() {
   const src = document.documentElement.outerHTML;
   const stateJson = JSON.stringify(state.sections);
   const publishedAt = Date.now();
 
-  // 1. Bake current sections in as the default data
+  // Replace the BAKED_STATE block using the stable markers
   let out = src.replace(
-    'state.sections = JSON.parse(JSON.stringify(DEFAULTS));',
-    'state.sections = JSON.parse(JSON.stringify(' + stateJson + '));'
+    /\/\/ @@BAKED_STATE_START@@[\s\S]*?\/\/ @@BAKED_STATE_END@@/,
+    '// @@BAKED_STATE_START@@\nconst BAKED_STATE = ' + stateJson + ';\n// @@BAKED_STATE_END@@'
   );
 
-  // 2. Inject PUBLISHED_AT constant right after STORAGE_KEY declaration
-  out = out.replace(
-    "const STORAGE_KEY = 'q2-planning-v4';",
-    "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
-  );
-
-  // 3. Patch saveLocal to stamp _savedAt on every write
-  out = out.replace(
-    'function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }',
-    'function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.assign({}, state, {_savedAt: Date.now()}))); }'
-  );
-
-  // 4. Patch loadState to prefer localStorage only when saved AFTER this publish
-  out = out.replace(
-    'if (ls && ls.sections) { state = ls; return; }',
-    'if (ls && ls.sections && ls._savedAt && ls._savedAt > PUBLISHED_AT) { state = ls; return; }'
-  );
+  // Inject or update PUBLISHED_AT (only once — guard against double-inject)
+  if (!out.includes('const PUBLISHED_AT =')) {
+    out = out.replace(
+      "const STORAGE_KEY = 'q2-planning-v4';",
+      "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
+    );
+  } else {
+    out = out.replace(/const PUBLISHED_AT = \d+;/, 'const PUBLISHED_AT = ' + publishedAt + ';');
+  }
 
   return out;
 }
