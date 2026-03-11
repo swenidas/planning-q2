@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q2 Planning — Error Prevention & Remediation</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f5f5f7; --surface:#fff; --surface2:#f0f0f5; --border:#e2e2ea; --border-light:#ebebf2;
+    --text:#111118; --text-muted:#6b6b88; --text-dim:#b0b0c8;
+    --accent:#4a4de8; --accent-glow:rgba(74,77,232,0.1);
+    --pri-high:#dc2626; --pri-med:#d97706; --pri-low:#16a34a;
+    --danger:#fef2f2; --danger-text:#b91c1c;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:13px; min-height:100vh; }
+  .wrap { max-width:1460px; margin:0 auto; padding:40px 32px 80px; }
+
+  /* ── Header ── */
+  .header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; gap:24px; }
+  .header-left { flex:1; }
+  .eyebrow { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.15em; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  h1 { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; }
+  h1 span { color:var(--accent); }
+  .sub { margin-top:7px; font-size:12px; color:var(--text-muted); }
+  .stats { display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 16px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .stat-num { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; }
+  .stat-label { font-size:11px; color:var(--text-muted); line-height:1.3; }
+  .stat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); padding:4px 8px; border-radius:4px; border:1px solid var(--border); background:var(--surface); }
+  .legend-dot { width:6px; height:6px; border-radius:50%; }
+
+  /* ── Progress ── */
+  .progress-wrap { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 22px; margin-bottom:22px; display:grid; grid-template-columns:repeat(4,1fr); gap:18px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+  .prog-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:7px; }
+  .prog-bar-bg { height:5px; background:var(--surface2); border-radius:3px; overflow:hidden; margin-bottom:5px; }
+  .prog-bar-fill { height:100%; border-radius:3px; transition:width .4s ease; }
+  .prog-nums { font-family:'Syne',sans-serif; font-size:11px; color:var(--text-muted); }
+  .prog-nums strong { color:var(--text); }
+
+  /* ── Toolbar ── */
+  .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap; }
+  .edit-hint { font-family:'DM Mono',monospace; font-size:9.5px; color:var(--text-dim); letter-spacing:.06em; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .edit-hint span { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:1px 5px; color:var(--text-muted); }
+  .toolbar-right { display:flex; gap:8px; align-items:center; }
+  .btn { font-family:'DM Mono',monospace; font-size:10px; padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; transition:all .15s; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-accent { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn-accent:hover { background:#3b3ec7; border-color:#3b3ec7; color:#fff; }
+  .copy-confirm { font-family:'DM Mono',monospace; font-size:10px; color:#16a34a; opacity:0; transition:opacity .3s; white-space:nowrap; }
+
+  /* ── Section ── */
+  .section-block { margin-top:32px; }
+  .section-header { display:flex; align-items:stretch; border-radius:10px 10px 0 0; border:1px solid; border-bottom:none; overflow:hidden; }
+  .section-accent-bar { width:4px; flex-shrink:0; }
+  .section-inner { display:flex; align-items:center; gap:10px; padding:12px 18px; flex:1; flex-wrap:wrap; }
+  .section-right { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .section-outcome-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; }
+  .section-outcome-val { font-size:12px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:5px; padding:4px 10px; min-width:240px; font-family:'Inter',sans-serif; }
+  .section-outcome-val:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-glow); }
+  .section-icon { font-size:15px; line-height:1; }
+  .section-title-inp { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; border:none; background:transparent; padding:0; min-width:80px; width:auto; }
+  .section-title-inp:focus { outline:2px solid rgba(255,255,255,.5); border-radius:3px; }
+  .del-section-btn { font-family:'DM Mono',monospace; font-size:9px; padding:4px 9px; border-radius:5px; border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.55); color:var(--text-muted); cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .del-section-btn:hover { background:var(--danger); color:var(--danger-text); border-color:#fecaca; }
+
+  /* ── Table ── */
+  .table-wrap { border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  thead th { background:var(--surface2); padding:8px 12px; text-align:left; font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+  thead th:first-child { padding-left:18px; }
+  tbody tr { border-bottom:1px solid var(--border-light); transition:background .1s; }
+  tbody tr:last-child { border-bottom:none; }
+  tbody tr:hover { background:#fafafd; }
+  tbody tr:hover .del-btn { opacity:1; }
+  td { padding:11px 12px; vertical-align:top; }
+  td:first-child { padding-left:18px; }
+
+  .add-row-wrap { border-top:1px dashed var(--border); background:var(--surface); }
+  .add-row-btn { width:100%; padding:10px 18px; background:transparent; border:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); text-align:left; display:flex; align-items:center; gap:7px; transition:all .15s; }
+  .add-row-btn:hover { color:var(--accent); background:var(--accent-glow); }
+  .add-icon { width:16px; height:16px; border-radius:4px; border:1px dashed currentColor; display:inline-flex; align-items:center; justify-content:center; font-size:12px; line-height:1; flex-shrink:0; }
+
+  .del-btn { opacity:0; background:none; border:none; cursor:pointer; color:var(--text-dim); font-size:14px; padding:2px 4px; border-radius:4px; transition:all .15s; line-height:1; }
+  .del-btn:hover { color:var(--danger-text); background:var(--danger); }
+
+  .item-name { font-weight:500; font-size:12.5px; }
+  .item-note { font-size:11px; color:var(--text-muted); font-style:italic; }
+  .item-id { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-dim); margin-top:4px; }
+
+  .badge { display:inline-block; padding:2px 7px; border-radius:4px; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; white-space:nowrap; }
+  .badge-platform { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); cursor:pointer; }
+
+  .pri { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; }
+  .pri-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .pri-label { font-family:'DM Mono',monospace; font-size:10px; }
+  .pri-high .pri-dot { background:var(--pri-high); } .pri-high .pri-label { color:var(--pri-high); }
+  .pri-med  .pri-dot { background:var(--pri-med);  } .pri-med  .pri-label { color:var(--pri-med);  }
+  .pri-low  .pri-dot { background:var(--pri-low);  } .pri-low  .pri-label { color:var(--pri-low);  }
+
+  .effort { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; font-family:'Syne',sans-serif; font-weight:700; font-size:11px; cursor:pointer; user-select:none; }
+  .effort-xs { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; }
+  .effort-s  { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+  .effort-m  { background:#fefce8; color:#a16207; border:1px solid #fde68a; }
+  .effort-l  { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+  .effort-xl { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+
+  .sprint-bar-wrap { margin-top:5px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .sprint-bar { height:100%; border-radius:2px; }
+
+  .editable { background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text); font-family:'Inter',sans-serif; font-size:12px; padding:4px 6px; width:100%; resize:none; overflow:hidden; transition:border-color .15s,background .15s; min-height:28px; }
+  .editable:hover { border-color:var(--border); background:var(--surface2); }
+  .editable:focus { border-color:var(--accent); background:#fff; outline:none; box-shadow:0 0 0 2px var(--accent-glow); }
+  .editable::placeholder { color:var(--text-dim); font-style:italic; }
+
+  .kpi-input { background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text-muted); font-family:'DM Mono',monospace; font-size:10px; padding:4px 6px; width:100%; resize:none; transition:border-color .15s,background .15s; min-height:30px; line-height:1.5; }
+  .kpi-input:hover { border-color:var(--border); background:var(--surface2); }
+  .kpi-input:focus { border-color:var(--accent); background:#fff; outline:none; box-shadow:0 0 0 2px var(--accent-glow); color:var(--text); }
+  .kpi-input::placeholder { color:var(--text-dim); font-style:italic; }
+
+  .status-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; cursor:pointer; border:1px solid transparent; transition:filter .15s; white-space:nowrap; user-select:none; }
+  .status-pill:hover { filter:brightness(.94); }
+  .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .s-notstarted { background:#f3f4f6; border-color:#d1d5db; color:#6b7280; }
+  .s-notstarted .status-dot { background:#9ca3af; }
+  .s-inprogress { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+  .s-inprogress .status-dot { background:#f59e0b; }
+  .s-done { background:#f0fdf4; border-color:#bbf7d0; color:#14532d; }
+  .s-done .status-dot { background:#22c55e; }
+  .s-blocked { background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
+  .s-blocked .status-dot { background:#ef4444; }
+
+  .owner-wrap { display:flex; align-items:center; gap:6px; }
+  .avatar { width:22px; height:22px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; font-family:'Syne',sans-serif; }
+
+  .col-del{width:28px} .col-num{width:34px} .col-item{min-width:200px;max-width:200px} .col-plat{width:82px}
+  .col-pri{width:72px} .col-eff{width:52px;text-align:center} .col-owner{width:125px}
+  .col-spr{width:115px} .col-dep{width:170px} .col-kpi{width:145px} .col-status{width:115px}
+  .row-num { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); padding-top:13px; }
+
+  /* ── Add section ── */
+  .add-section-wrap { margin-top:28px; }
+  .add-section-btn { display:flex; align-items:center; gap:10px; width:100%; padding:14px 20px; background:var(--surface); border:2px dashed var(--border); border-radius:10px; cursor:pointer; font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); transition:all .15s; }
+  .add-section-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-glow); }
+  .add-section-icon { width:20px; height:20px; border-radius:5px; border:1px dashed currentColor; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+
+  /* ── Modal ── */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:200; display:flex; align-items:center; justify-content:center; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:26px; width:390px; box-shadow:0 20px 60px rgba(0,0,0,.14); }
+  .modal-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px; }
+  .modal-label { display:block; font-size:9.5px; color:var(--text-muted); margin-bottom:5px; margin-top:14px; font-family:'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }
+  .modal-label:first-of-type { margin-top:0; }
+  .modal-input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:'Inter',sans-serif; font-size:13px; color:var(--text); background:var(--surface); }
+  .modal-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-glow); }
+  .swatches { display:flex; gap:7px; flex-wrap:wrap; margin-top:6px; }
+  .swatch { width:26px; height:26px; border-radius:6px; cursor:pointer; border:2px solid transparent; transition:transform .1s,border-color .1s; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+  .swatch:hover { transform:scale(1.18); }
+  .swatch.active { border-color:#111 !important; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:22px; }
+
+  .btn-github { background:#24292f; border-color:#24292f; color:#fff; }
+  .btn-github:hover { background:#1a1f24; border-color:#1a1f24; color:#fff; }
+  .btn-github.pushing { opacity:.7; cursor:not-allowed; }
+  .gh-status { font-family:'DM Mono',monospace; font-size:10px; white-space:nowrap; transition:opacity .3s; }
+  .gh-status.ok  { color:#16a34a; }
+  .gh-status.err { color:#b91c1c; }
+
+  /* ── Save bar ── */
+  .save-bar { position:fixed; bottom:24px; right:32px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:9px 16px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:8px; opacity:0; transform:translateY(8px); transition:all .2s; z-index:100; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .save-bar.show { opacity:1; transform:translateY(0); }
+  .save-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes spin  { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">adidas.com · Lower Funnel · Q2 2025</div>
+      <h1>Error Prevention <span>&</span> Remediation</h1>
+      <div class="sub">April – June 2025</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-dot" style="background:var(--pri-high)"></div><div><div class="stat-num" id="stat-high">—</div><div class="stat-label">High priority</div></div></div>
+        <div class="stat"><div class="stat-dot" style="background:#f59e0b"></div><div><div class="stat-num" id="stat-inprogress">—</div><div class="stat-label">In progress</div></div></div>
+        <div class="stat"><div class="stat-dot" style="background:#22c55e"></div><div><div class="stat-num" id="stat-done">—</div><div class="stat-label">Done</div></div></div>
+        <div class="stat"><div class="stat-dot" style="background:#9ca3af"></div><div><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total items</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--pri-high)"></div>High</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--pri-med)"></div>Med</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--pri-low)"></div>Low</div>
+        <div class="legend-item" style="margin-left:4px">XS→XL effort</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div><div class="prog-label">Not Started</div><div class="prog-bar-bg"><div class="prog-bar-fill" id="pb-notstarted" style="background:#d1d5db"></div></div><div class="prog-nums"><strong id="pn-notstarted">—</strong></div></div>
+    <div><div class="prog-label">In Progress</div><div class="prog-bar-bg"><div class="prog-bar-fill" id="pb-inprogress" style="background:#f59e0b"></div></div><div class="prog-nums"><strong id="pn-inprogress">—</strong></div></div>
+    <div><div class="prog-label">Done</div><div class="prog-bar-bg"><div class="prog-bar-fill" id="pb-done" style="background:#22c55e"></div></div><div class="prog-nums"><strong id="pn-done">—</strong></div></div>
+    <div><div class="prog-label">Blocked</div><div class="prog-bar-bg"><div class="prog-bar-fill" id="pb-blocked" style="background:#ef4444"></div></div><div class="prog-nums"><strong id="pn-blocked">—</strong></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="edit-hint">
+      <span>click cells</span> to edit · <span>section title</span> editable ·
+      priority / effort / status / platform cycle on click ·
+      <span>+ add section</span> at the bottom
+    </div>
+    <div class="toolbar-right">
+      <button class="btn" onclick="exportLink()">📋 Copy share link</button>
+      <span class="copy-confirm" id="copy-confirm">✓ Copied!</span>
+      <button class="btn btn-github" id="gh-btn" onclick="handleGithubClick()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Push to GitHub
+      </button>
+      <span class="gh-status" id="gh-status"></span>
+    </div>
+  </div>
+
+  <div id="sections-root"></div>
+
+  <div class="add-section-wrap">
+    <button class="add-section-btn" onclick="openModal()">
+      <span class="add-section-icon">+</span> Add section
+    </button>
+  </div>
+
+</div>
+
+<!-- New-section modal -->
+<div class="modal-backdrop" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">New section</div>
+    <label class="modal-label">Section name</label>
+    <input class="modal-input" id="m-name" type="text" placeholder="e.g. Checkout Flow">
+    <label class="modal-label">Accent colour</label>
+    <div class="swatches" id="m-colors"></div>
+    <label class="modal-label">Icon</label>
+    <div class="swatches" id="m-icons"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="confirmSection()">Add section</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub setup modal -->
+<div class="modal-backdrop" id="gh-modal" style="display:none" onclick="if(event.target===this)closeGhModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:440px">
+    <div class="modal-title">Connect to GitHub</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:18px;line-height:1.6">
+      This lets you push your board changes directly to GitHub Pages so the main URL always reflects your latest edits. Your token is stored only in this browser.
+    </p>
+
+    <label class="modal-label">GitHub username</label>
+    <input class="modal-input" id="gh-user" type="text" placeholder="e.g. swenidas" style="margin-bottom:10px">
+
+    <label class="modal-label">Repository name</label>
+    <input class="modal-input" id="gh-repo" type="text" placeholder="e.g. planning-q2" style="margin-bottom:10px">
+
+    <label class="modal-label">File path in repo</label>
+    <input class="modal-input" id="gh-path" type="text" placeholder="index.html" style="margin-bottom:10px">
+
+    <label class="modal-label">Personal Access Token
+      <a href="https://github.com/settings/tokens/new?scopes=repo&description=Q2+Planning+Board" target="_blank"
+         style="font-family:'Inter',sans-serif;color:var(--accent);text-decoration:none;margin-left:6px;font-size:9px;text-transform:none;letter-spacing:0">
+        Generate one ↗
+      </a>
+    </label>
+    <input class="modal-input" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" style="margin-bottom:4px">
+    <p style="font-size:10px;color:var(--text-dim);margin-bottom:16px;font-family:'DM Mono',monospace">
+      Needs <strong>repo</strong> scope. Stored locally in your browser only — never sent anywhere except GitHub.
+    </p>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeGhModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveGhConfig()">Save & push now</button>
+    </div>
+  </div>
+</div>
+
+<div class="save-bar" id="save-bar"><div class="save-dot"></div>Saved</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'q2-planning-v4';
+const STATUSES  = ['Not Started','In Progress','Done','Blocked'];
+const PRIORITIES = ['High','Med','Low'];
+const EFFORTS   = ['XS','S','M','L','XL'];
+const PLATFORMS = ['.com','App','App + .com'];
+
+const PALETTE = [
+  {color:'#e06b00', bg:'rgba(224,107,0,0.06)',  border:'rgba(224,107,0,0.2)'},
+  {color:'#4a4de8', bg:'rgba(74,77,232,0.05)',  border:'rgba(74,77,232,0.2)'},
+  {color:'#0891b2', bg:'rgba(8,145,178,0.06)',  border:'rgba(8,145,178,0.2)'},
+  {color:'#e11d48', bg:'rgba(225,29,72,0.05)',  border:'rgba(225,29,72,0.2)'},
+  {color:'#16a34a', bg:'rgba(22,163,74,0.06)',  border:'rgba(22,163,74,0.2)'},
+  {color:'#7c3aed', bg:'rgba(124,58,237,0.06)', border:'rgba(124,58,237,0.2)'},
+  {color:'#d97706', bg:'rgba(217,119,6,0.06)',  border:'rgba(217,119,6,0.2)'},
+  {color:'#475569', bg:'rgba(71,85,105,0.05)',  border:'rgba(71,85,105,0.2)'},
+];
+const ICONS = ['📦','⚡','🛒','🚀','🔍','💳','🎯','📊','🛠️','⚙️','💡','📈','🧪','🖥️','🗂️'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Default data — preserving Tim's ML4.2 edits (efforts + statuses)
+// ─────────────────────────────────────────────────────────────────────────────
+const DEFAULTS = [
+  { id:'oos', title:'Out-of-Stock Experience', icon:'📦', colorIdx:0,
+    outcome:'Reduce lost revenue from OOS — keep customers in funnel',
+    items:[
+      {id:'OOS-1',name:'Allow checkout with OOS items',note:'Move OOS to wishlist — enabler for full OOS experience on .com',platform:'.com',priority:'High',effort:'L',sprint:'',deps:[],kpi:'Cart abandonment rate (OOS)',status:'Not Started',owner:''},
+      {id:'OOS-2',name:'Available colors in size X for OOS',note:'ATP-8596 — surface size/color alternatives when OOS',platform:'App + .com',priority:'High',effort:'M',sprint:'',deps:[],kpi:'OOS alternative click-through rate',status:'In Progress',owner:''},
+      {id:'OOS-3',name:'Suggest alternative products in cart',note:'Lower confidence — explore recommendation engine integration',platform:'App + .com',priority:'Low',effort:'M',sprint:'',deps:[],kpi:'Add-to-cart rate from recommendation',status:'Not Started',owner:''},
+    ]
+  },
+  { id:'err', title:'Error Prevention & Remediation', icon:'⚡', colorIdx:1,
+    outcome:'Reduce checkout error rate — improve conversion & voucher redemption',
+    items:[
+      {id:'ERR-1', name:'Rollout contextual error messaging globally',  note:'Expand AB test winner to all markets',                                         platform:'App + .com',priority:'High',effort:'XS',sprint:'',deps:[],kpi:'Checkout error rate',              status:'In Progress', owner:''},
+      {id:'ERR-2', name:'Run the voucher wallet AB test',               note:'Test voucher wallet panel vs inline promo — validate conversion impact',         platform:'.com',      priority:'High',effort:'L', sprint:'',deps:[],kpi:'Voucher redemption rate · CVR', status:'Not Started', owner:''},
+      {id:'ERR-3', name:'Voucher wallet — show final savings amount',   note:'Display total saving at voucher level within wallet panel',                      platform:'App + .com',priority:'Low', effort:'S', sprint:'',deps:[],kpi:'Voucher redemption rate',       status:'Not Started', owner:''},
+      {id:'ERR-4', name:'Voucher wallet — contextual error messaging',  note:'Inline error states inside voucher wallet panel',                                platform:'App + .com',priority:'Med', effort:'S', sprint:'',deps:[],kpi:'Voucher error recovery rate',   status:'Not Started', owner:''},
+      {id:'ERR-5', name:'Voucher wallet — clickable vouchers',          note:'One-tap apply; includes error tracking per ERR-10 US request',                   platform:'App + .com',priority:'Med', effort:'M', sprint:'',deps:[],kpi:'Voucher apply rate',            status:'Not Started', owner:''},
+      {id:'ERR-6', name:'Voucher wallet — single source of truth',      note:'Unify app & .com voucher data via Promotion Services — high impact all markets', platform:'App + .com',priority:'High',effort:'L', sprint:'',deps:[],kpi:'Voucher data discrepancy rate', status:'Not Started', owner:''},
+      {id:'ERR-7', name:'Form errors in payment fields',                note:'Inline validation for card number, expiry, CVV — reduce failed payments',        platform:'.com',      priority:'Med', effort:'XS',sprint:'',deps:[],kpi:'Payment failure rate',          status:'Not Started', owner:''},
+      {id:'ERR-8', name:'Identify & onboard payment errors to UI/tech framework', note:'Map ACI error codes to user-facing messages — especially app',         platform:'App + .com',priority:'High',effort:'M', sprint:'',deps:[],kpi:'Payment error recovery rate',   status:'Not Started', owner:''},
+      {id:'ERR-9', name:'Highlight eligibility on product card — AB test', note:'Surface member pricing / promo eligibility earlier in funnel',                platform:'App + .com',priority:'Med', effort:'S', sprint:'',deps:[],kpi:'Add-to-cart rate · Promo awareness',status:'Not Started',owner:''},
+      {id:'ERR-10',name:'Clickable vouchers error tracking implementation',note:'US market request — analytics instrumentation for voucher click errors',       platform:'.com',      priority:'Low', effort:'S', sprint:'',deps:[],kpi:'Voucher error event coverage',   status:'Not Started', owner:''},
+    ]
+  },
+  { id:'cart', title:'Empty Cart', icon:'🛒', colorIdx:2,
+    outcome:'Reduce empty cart bounce — re-engage customers and increase cart-to-checkout CVR',
+    items:[
+      {id:'CART-1',name:'Empty cart experience redesign — AB test',note:'Test personalised recommendations, recently viewed & re-engagement CTAs vs blank state',platform:'.com',priority:'High',effort:'M',sprint:'',deps:[],kpi:'Cart-to-checkout CVR',status:'Not Started',owner:''},
+      {id:'CART-2',name:'Surface recently viewed products in empty cart',note:'Pull recently viewed items from browse session into empty cart state',platform:'App + .com',priority:'Med',effort:'S',sprint:'',deps:['CART-1 AB result','Recently viewed API'],kpi:'Add-to-cart rate from empty cart',status:'Not Started',owner:''},
+      {id:'CART-3',name:'Persist cart across sessions & devices',note:'Ensure cart items survive session expiry — reduce unintended empty cart states',platform:'App + .com',priority:'High',effort:'L',sprint:'',deps:['Cart service session handling'],kpi:'Session cart recovery rate',status:'Not Started',owner:''},
+    ]
+  },
+  { id:'speed', title:'Site Speed', icon:'🚀', colorIdx:3,
+    outcome:'Improve Core Web Vitals on key funnel pages to reduce bounce and lift conversion',
+    items:[
+      {id:'SPD-1',name:'Baseline audit — Core Web Vitals across funnel',note:'Measure LCP, INP, CLS on home, PDP, cart, checkout across App & .com',platform:'App + .com',priority:'High',effort:'S',sprint:'',deps:[],kpi:'LCP / INP / CLS per page',status:'Not Started',owner:''},
+      {id:'SPD-2',name:'Identify & prioritise top performance bottlenecks',note:'Map slowest pages to conversion impact — create prioritised fix backlog',platform:'App + .com',priority:'High',effort:'M',sprint:'',deps:['SPD-1 baseline'],kpi:'Time-to-interactive (TTI)',status:'Not Started',owner:''},
+      {id:'SPD-3',name:'Checkout page load optimisation',note:'Lazy-load non-critical scripts, optimise hero images, defer 3rd-party tags on checkout',platform:'.com',priority:'High',effort:'L',sprint:'',deps:['SPD-2 prioritisation','Engineering sprint slot'],kpi:'Checkout LCP · Checkout CVR',status:'Not Started',owner:''},
+    ]
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let state = { sections: [] };
+
+function loadState() {
+  try {
+    const hash = location.hash.slice(1);
+    if (hash) {
+      state = JSON.parse(decodeURIComponent(atob(hash)));
+      history.replaceState(null, '', location.pathname);
+      saveLocal(); return;
+    }
+  } catch(e) {}
+  try {
+    const ls = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (ls && ls.sections && (!ls._savedAt || !window.PUBLISHED_AT || ls._savedAt > window.PUBLISHED_AT)) { state = ls; return; }
+  } catch(e) {}
+  state.sections = JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let _ft;
+function persist() {
+  saveLocal(); updateStats();
+  const b = document.getElementById('save-bar');
+  b.classList.add('show'); clearTimeout(_ft);
+  _ft = setTimeout(() => b.classList.remove('show'), 1800);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+const sc = s => ({'Not Started':'s-notstarted','In Progress':'s-inprogress','Done':'s-done','Blocked':'s-blocked'}[s] || 's-notstarted');
+const ec = e => ({'XS':'effort-xs','S':'effort-s','M':'effort-m','L':'effort-l','XL':'effort-xl'}[e] || 'effort-m');
+const pc = p => ({'High':'pri-high','Med':'pri-med','Low':'pri-low'}[p] || 'pri-med');
+const initials = n => n ? n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
+const avc = n => { const c=['#4a4de8','#e06b00','#22c55e','#f59e0b','#ec4899','#0891b2']; let h=0; for(const ch of n) h=(h*31+ch.charCodeAt(0))%c.length; return c[h]; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build one table row
+// ─────────────────────────────────────────────────────────────────────────────
+function buildRow(item, idx, sec) {
+  const C = PALETTE[sec.colorIdx] || PALETTE[0];
+  const tr = document.createElement('tr');
+
+  // × delete item
+  const tdD = el('td','col-del'); const db = el('button','del-btn');
+  db.textContent = '×'; db.title = 'Remove item';
+  db.onclick = () => { if (!confirm(`Remove "${item.name||'this item'}"?`)) return;
+    sec.items = sec.items.filter(i => i.id !== item.id); persist(); renderSection(sec); };
+  tdD.append(db); tr.append(tdD);
+
+  // row num
+  const tdN = el('td','row-num col-num'); tdN.textContent = String(idx).padStart(2,'0'); tr.append(tdN);
+
+  // work item name + note + id
+  const tdI = el('td','col-item');
+  const ni = textarea('editable item-name', item.name, 'Work item name…');
+  ni.style.cssText = 'min-height:28px;font-weight:500;font-size:12.5px;rows:1;';
+  ni.rows = 1;
+  autoResize(ni);
+  ni.oninput = () => autoResize(ni);
+  ni.onchange = () => { item.name = ni.value; persist(); };
+  const note = textarea('editable item-note', item.note||'', 'Short description (optional)…');
+  note.style.cssText = 'min-height:24px;margin-top:3px;font-size:11px;font-style:italic;color:var(--text-muted);';
+  note.rows = 1;
+  autoResize(note);
+  note.oninput = () => autoResize(note);
+  note.onchange = () => { item.note = note.value; persist(); };
+  const idl = el('div','item-id'); idl.textContent = item.id;
+  tdI.append(ni, note, idl); tr.append(tdI);
+
+  // platform badge
+  const tdP = el('td','col-plat');
+  const pb = el('span','badge badge-platform'); pb.textContent = item.platform||'.com'; pb.title='Click to cycle';
+  pb.onclick = () => { const n=PLATFORMS[(PLATFORMS.indexOf(pb.textContent)+1)%PLATFORMS.length]; pb.textContent=n; item.platform=n; persist(); };
+  tdP.append(pb); tr.append(tdP);
+
+  // priority
+  const tdPr = el('td','col-pri');
+  const pw = el('div',`pri ${pc(item.priority||'Med')}`); pw.title='Click to cycle';
+  pw.innerHTML = `<div class="pri-dot"></div><div class="pri-label">${item.priority||'Med'}</div>`;
+  pw.onclick = () => { const lbl=pw.querySelector('.pri-label'); const n=PRIORITIES[(PRIORITIES.indexOf(lbl.textContent)+1)%PRIORITIES.length]; lbl.textContent=n; pw.className=`pri ${pc(n)}`; item.priority=n; persist(); };
+  tdPr.append(pw); tr.append(tdPr);
+
+  // effort
+  const tdE = el('td','col-eff'); tdE.style.textAlign='center';
+  const ew = el('div',`effort ${ec(item.effort||'M')}`); ew.textContent=item.effort||'M'; ew.title='Click to cycle';
+  ew.onclick = () => { const n=EFFORTS[(EFFORTS.indexOf(ew.textContent)+1)%EFFORTS.length]; ew.textContent=n; ew.className=`effort ${ec(n)}`; item.effort=n; persist(); };
+  tdE.append(ew); tr.append(tdE);
+
+  // owner
+  const tdO = el('td','col-owner'); const ow = el('div','owner-wrap');
+  const av = el('div','avatar'); av.textContent=item.owner?initials(item.owner):'?';
+  if (item.owner) av.style.background = avc(item.owner);
+  const oi = input('editable', item.owner||'', 'Assign…', '28px');
+  oi.oninput = () => { av.textContent=oi.value?initials(oi.value):'?'; av.style.background=oi.value?avc(oi.value):'var(--accent)'; };
+  oi.onchange = () => { item.owner=oi.value; persist(); };
+  ow.append(av, oi); tdO.append(ow); tr.append(tdO);
+
+  // sprint
+  const tdS = el('td','col-spr');
+  const si = input('editable', item.sprint||'', 'e.g. Apr W1–W3', '28px');
+  si.style.cssText += "font-family:'DM Mono',monospace;font-size:10.5px;";
+  si.onchange = () => { item.sprint=si.value; persist(); };
+  const bw = el('div','sprint-bar-wrap'); const bar = el('div','sprint-bar');
+  bar.style.background = C.color; bar.style.width='0%';
+  bw.append(bar); tdS.append(si, bw); tr.append(tdS);
+
+  // deps
+  const tdDep = el('td','col-dep');
+  const di = textarea('editable', (item.deps||[]).join('\n'), 'List dependencies…');
+  di.style.cssText += 'font-size:11px;line-height:1.5;';
+  di.rows = Math.max(2, (item.deps||[]).length || 2);
+  di.onchange = () => { item.deps=di.value.split('\n').filter(Boolean); persist(); };
+  tdDep.append(di); tr.append(tdDep);
+
+  // kpi
+  const tdK = el('td','col-kpi');
+  const ki = textarea('kpi-input', item.kpi||'', 'e.g. Checkout CVR…');
+  ki.rows=2; ki.style.lineHeight='1.5';
+  ki.onchange = () => { item.kpi=ki.value; persist(); };
+  tdK.append(ki); tr.append(tdK);
+
+  // status
+  const tdSt = el('td','col-status');
+  const pill = el('div',`status-pill ${sc(item.status||'Not Started')}`); pill.title='Click to cycle';
+  pill.innerHTML=`<div class="status-dot"></div><span>${item.status||'Not Started'}</span>`;
+  pill.onclick = () => { const sp=pill.querySelector('span'); const n=STATUSES[(STATUSES.indexOf(sp.textContent)+1)%STATUSES.length]; sp.textContent=n; pill.className=`status-pill ${sc(n)}`; item.status=n; persist(); };
+  tdSt.append(pill); tr.append(tdSt);
+
+  return tr;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render one section (rebuilds DOM node, replaces existing if present)
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSection(sec) {
+  const C = PALETTE[sec.colorIdx] || PALETTE[0];
+  const root = document.getElementById('sections-root');
+  const existing = document.getElementById('sb-'+sec.id);
+
+  const block = el('div','section-block'); block.id = 'sb-'+sec.id;
+
+  // ── section header ──
+  const hdr = el('div','section-header');
+  hdr.style.cssText = `background:${C.bg};border-color:${C.border};`;
+  const acBar = el('div','section-accent-bar'); acBar.style.background = C.color;
+
+  const inner = el('div','section-inner');
+  const iconEl = el('span','section-icon'); iconEl.textContent = sec.icon;
+
+  // editable title
+  const titleInp = el('input','section-title-inp');
+  titleInp.type='text'; titleInp.value=sec.title; titleInp.style.color=C.color;
+  titleInp.size = Math.max(sec.title.length, 8);
+  titleInp.oninput = () => titleInp.size = Math.max(titleInp.value.length, 8);
+  titleInp.onchange = () => { sec.title=titleInp.value; persist(); };
+
+  const right = el('div','section-right');
+  const olabel = el('span','section-outcome-label'); olabel.textContent='Outcome';
+  const oval = el('input','section-outcome-val');
+  oval.type='text'; oval.placeholder='Define outcome…'; oval.value=sec.outcome||'';
+  oval.onchange = () => { sec.outcome=oval.value; persist(); };
+
+  // delete section
+  const delSec = el('button','del-section-btn'); delSec.textContent='× Remove section';
+  delSec.onclick = () => {
+    if (!confirm(`Remove "${sec.title}" and all its items?`)) return;
+    state.sections = state.sections.filter(s => s.id !== sec.id);
+    persist(); renderAll();
+  };
+
+  right.append(olabel, oval, delSec);
+  inner.append(iconEl, titleInp, right);
+  hdr.append(acBar, inner); block.append(hdr);
+
+  // ── table ──
+  const tw = el('div','table-wrap');
+  const tbl = document.createElement('table');
+  const thead = document.createElement('thead');
+  thead.innerHTML = `<tr>
+    <th class="col-del"></th><th class="col-num">#</th>
+    <th class="col-item">Work Item</th><th class="col-plat">Platform</th>
+    <th class="col-pri">Priority</th><th class="col-eff">Effort</th>
+    <th class="col-owner">Owner / Team</th><th class="col-spr">Sprint / Timeline</th>
+    <th class="col-dep">Dependencies</th><th class="col-kpi">Main KPI</th>
+    <th class="col-status">Status</th></tr>`;
+  const tbody = document.createElement('tbody'); tbody.id = 'tbody-'+sec.id;
+  sec.items.forEach((item, i) => tbody.append(buildRow(item, i+1, sec)));
+  tbl.append(thead, tbody); tw.append(tbl);
+
+  // add-item row
+  const arw = el('div','add-row-wrap');
+  const arb = el('button','add-row-btn');
+  arb.innerHTML = '<span class="add-icon">+</span> Add work item';
+  arb.onclick = () => {
+    const prefix = sec.id.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)||'ITEM';
+    const ni = {id:`${prefix}-${uid()}`,name:'',note:'',platform:'.com',priority:'Med',effort:'M',sprint:'',deps:[],kpi:'',status:'Not Started',owner:''};
+    sec.items.push(ni); persist(); renderSection(sec);
+    const last = document.getElementById('tbody-'+sec.id).lastElementChild;
+    if (last) { const inp=last.querySelector('input'); if(inp){inp.focus();inp.scrollIntoView({behavior:'smooth',block:'center'});} }
+  };
+  arw.append(arb); tw.append(arw); block.append(tw);
+
+  if (existing) existing.replaceWith(block);
+  else root.append(block);
+}
+
+function renderAll() {
+  document.getElementById('sections-root').innerHTML = '';
+  state.sections.forEach(s => renderSection(s));
+  updateStats();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats
+// ─────────────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const all = state.sections.flatMap(s => s.items);
+  const total = all.length;
+  let done=0,ip=0,bl=0,hi=0;
+  all.forEach(it => { if(it.status==='Done')done++; if(it.status==='In Progress')ip++; if(it.status==='Blocked')bl++; if(it.priority==='High')hi++; });
+  const ns = total-done-ip-bl;
+  document.getElementById('stat-high').textContent = hi;
+  document.getElementById('stat-inprogress').textContent = ip;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-total').textContent = total;
+  [['notstarted',ns],['inprogress',ip],['done',done],['blocked',bl]].forEach(([k,v]) => {
+    document.getElementById('pn-'+k).textContent = `${v} / ${total}`;
+    document.getElementById('pb-'+k).style.width = total ? (v/total*100)+'%' : '0%';
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Add section modal
+// ─────────────────────────────────────────────────────────────────────────────
+let mColor = 0, mIcon = 0;
+
+function openModal() {
+  const used = state.sections.map(s => s.colorIdx);
+  mColor = PALETTE.findIndex((_,i) => !used.includes(i));
+  if (mColor < 0) mColor = 0;
+  mIcon = 0;
+  document.getElementById('m-name').value = '';
+  renderSwatches();
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-name').focus(), 60);
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+function renderSwatches() {
+  const cs = document.getElementById('m-colors'); cs.innerHTML = '';
+  PALETTE.forEach((p,i) => {
+    const sw = el('div','swatch'+(i===mColor?' active':''));
+    sw.style.background = p.color; sw.title = p.color;
+    sw.onclick = () => { mColor=i; renderSwatches(); };
+    cs.append(sw);
+  });
+  const is = document.getElementById('m-icons'); is.innerHTML = '';
+  ICONS.forEach((ic,i) => {
+    const sw = el('div','swatch'+(i===mIcon?' active':''));
+    sw.style.cssText = 'background:var(--surface2);border:1px solid var(--border);';
+    sw.textContent = ic;
+    sw.onclick = () => { mIcon=i; renderSwatches(); };
+    is.append(sw);
+  });
+}
+
+function confirmSection() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { document.getElementById('m-name').focus(); return; }
+  const ns = { id:'sec-'+uid(), title:name, icon:ICONS[mIcon], colorIdx:mColor, outcome:'', items:[] };
+  state.sections.push(ns); persist(); renderSection(ns); closeModal();
+  document.getElementById('sb-'+ns.id).scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Share link
+// ─────────────────────────────────────────────────────────────────────────────
+function exportLink() {
+  const encoded = btoa(encodeURIComponent(JSON.stringify(state)));
+  const url = location.href.split('#')[0] + '#' + encoded;
+  navigator.clipboard.writeText(url).then(() => {
+    const c = document.getElementById('copy-confirm');
+    c.style.opacity='1'; setTimeout(()=>c.style.opacity='0',2500);
+  }).catch(() => prompt('Copy this link:', url));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOM helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function el(tag, cls='') { const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+function input(cls, val, ph, mh='30px') {
+  const i=document.createElement('input'); i.type='text'; i.className=cls; i.value=val; i.placeholder=ph; i.style.minHeight=mh; return i;
+}
+function textarea(cls, val, ph) {
+  const t=document.createElement('textarea'); t.className=cls; t.value=val; t.placeholder=ph; return t;
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GitHub sync
+// ─────────────────────────────────────────────────────────────────────────────
+const GH_CONFIG_KEY = 'q2-gh-config';
+
+function loadGhConfig() {
+  try { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || 'null'); } catch(e) { return null; }
+}
+function saveGhConfigLocal(cfg) {
+  localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function handleGithubClick() {
+  const cfg = loadGhConfig();
+  if (!cfg || !cfg.token) {
+    // First time — open setup modal
+    openGhModal();
+  } else {
+    // Already configured — push immediately
+    pushToGithub(cfg);
+  }
+}
+
+function openGhModal() {
+  const cfg = loadGhConfig() || {};
+  document.getElementById('gh-user').value  = cfg.user  || '';
+  document.getElementById('gh-repo').value  = cfg.repo  || '';
+  document.getElementById('gh-path').value  = cfg.path  || 'index.html';
+  document.getElementById('gh-token').value = cfg.token || '';
+  document.getElementById('gh-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('gh-user').focus(), 60);
+}
+function closeGhModal() { document.getElementById('gh-modal').style.display = 'none'; }
+
+function saveGhConfig() {
+  const cfg = {
+    user:  document.getElementById('gh-user').value.trim(),
+    repo:  document.getElementById('gh-repo').value.trim(),
+    path:  document.getElementById('gh-path').value.trim() || 'index.html',
+    token: document.getElementById('gh-token').value.trim(),
+  };
+  if (!cfg.user || !cfg.repo || !cfg.token) {
+    alert('Please fill in username, repository, and token.');
+    return;
+  }
+  saveGhConfigLocal(cfg);
+  closeGhModal();
+  pushToGithub(cfg);
+}
+
+async function pushToGithub(cfg) {
+  const btn = document.getElementById('gh-btn');
+  const status = document.getElementById('gh-status');
+
+  btn.classList.add('pushing');
+  btn.querySelector('svg').style.animation = 'spin 1s linear infinite';
+  status.textContent = 'Pushing…';
+  status.className = 'gh-status';
+
+  try {
+    // 1. Get current file SHA (needed for update)
+    const apiBase = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/${cfg.path}`;
+    const headers = {
+      'Authorization': `token ${cfg.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    };
+
+    let sha = null;
+    const getRes = await fetch(apiBase, { headers });
+    if (getRes.ok) {
+      const getJson = await getRes.json();
+      sha = getJson.sha;
+    } else if (getRes.status !== 404) {
+      throw new Error(`GitHub responded with ${getRes.status}`);
+    }
+
+    // 2. Build updated HTML — inject current state as baked-in defaults
+    const updatedHtml = buildExportHtml();
+    const encoded = btoa(unescape(encodeURIComponent(updatedHtml)));
+
+    // 3. Commit
+    const body = {
+      message: `Update Q2 planning board — ${new Date().toLocaleString('en-GB', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}`,
+      content: encoded,
+      ...(sha ? { sha } : {}),
+    };
+    const putRes = await fetch(apiBase, { method:'PUT', headers, body: JSON.stringify(body) });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${putRes.status}`);
+    }
+
+    status.textContent = '✓ Pushed! Live in ~60s';
+    status.className = 'gh-status ok';
+    setTimeout(() => { status.textContent=''; }, 6000);
+
+  } catch(e) {
+    console.error(e);
+    status.textContent = `✗ ${e.message}`;
+    status.className = 'gh-status err';
+  } finally {
+    btn.classList.remove('pushing');
+    btn.querySelector('svg').style.animation = '';
+  }
+}
+
+// Build a self-contained HTML export with current state baked in.
+// Embeds a publish timestamp — other browsers compare it against when
+// their local copy was last saved and discard theirs if it's older.
+function buildExportHtml() {
+  const src = document.documentElement.outerHTML;
+  const stateJson = JSON.stringify(state.sections);
+  const publishedAt = Date.now();
+
+  // 1. Bake current sections in as the default data
+  let out = src.replace(
+    'state.sections = JSON.parse(JSON.stringify(DEFAULTS));',
+    'state.sections = JSON.parse(JSON.stringify(' + stateJson + '));'
+  );
+
+  // 2. Inject PUBLISHED_AT constant right after STORAGE_KEY declaration
+  out = out.replace(
+    "const STORAGE_KEY = 'q2-planning-v4';",
+    "const STORAGE_KEY = 'q2-planning-v4';\nconst PUBLISHED_AT = " + publishedAt + ";"
+  );
+
+  // 3. Patch saveLocal to stamp _savedAt on every write
+  out = out.replace(
+    'function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }',
+    'function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.assign({}, state, {_savedAt: Date.now()}))); }'
+  );
+
+  // 4. Patch loadState to prefer localStorage only when saved AFTER this publish
+  out = out.replace(
+    'if (ls && ls.sections) { state = ls; return; }',
+    'if (ls && ls.sections && ls._savedAt && ls._savedAt > PUBLISHED_AT) { state = ls; return; }'
+  );
+
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+loadState();
+renderAll();
+// Expand all item-name and item-note textareas to fit their content on load
+document.querySelectorAll('.item-name, .item-note').forEach(autoResize);
+</script>
+</body>
+</html>
